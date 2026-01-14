@@ -10,6 +10,7 @@
     <meta name="apple-mobile-web-app-title" content="Novo Dia">
     <meta name="application-name" content="Web Rádio Um Novo Dia">
     <meta name="mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="./manifest.json">
     <title>Web Rádio Um Novo Dia</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
@@ -17,9 +18,8 @@
         body {
             font-family: 'Montserrat', sans-serif;
             background-color: #1e1b4b;
-            overflow-x: hidden;
+            overflow: hidden;
             -webkit-tap-highlight-color: transparent;
-            /* Previne o bounce effect no iOS */
             position: fixed;
             width: 100%;
             height: 100%;
@@ -29,18 +29,13 @@
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
         }
-        .font-inter {
-            font-family: 'Inter', sans-serif;
+        .logo-glow {
+            animation: gold-glow 3s infinite ease-in-out;
         }
         @keyframes gold-glow {
             0%, 100% { filter: drop-shadow(0 0 5px rgba(251, 191, 36, 0.4)); }
             50% { filter: drop-shadow(0 0 15px rgba(251, 191, 36, 0.8)); }
         }
-        .logo-glow {
-            animation: gold-glow 3s infinite ease-in-out;
-        }
-        /* Mobile fixes */
-        input, textarea { font-size: 16px !important; }
     </style>
 <script type="importmap">
 {

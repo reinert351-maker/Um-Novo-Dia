@@ -1,0 +1,17 @@
+
+{
+  "short_name": "Novo Dia",
+  "name": "Web Rádio Um Novo Dia",
+  "icons": [
+    {
+      "src": "https://lh3.googleusercontent.com/d/1Vu5TxnT60RxvYXvIBTSnv7YK_n2lvs5j",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#1e1b4b",
+  "background_color": "#1e1b4b"
+}

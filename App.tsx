@@ -18,43 +18,28 @@ const App: React.FC = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    // Persistent Audio object
-    const audio = new Audio();
-    audio.src = STREAM_URL;
-    audio.crossOrigin = "anonymous";
-    audio.preload = "auto";
-    audioRef.current = audio;
-    
-    // Hide splash
-    const timer = setTimeout(() => {
-      setShowSplash(false);
-    }, 4000);
-
-    return () => {
-      clearTimeout(timer);
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-    };
+    const timer = setTimeout(() => setShowSplash(false), 3000);
+    return () => clearTimeout(timer);
   }, []);
 
-  // Media Session API for background control
+  // Update Media Session whenever song or play state changes
   useEffect(() => {
-    if ('mediaSession' in navigator && audioRef.current) {
+    if ('mediaSession' in navigator && isPlaying) {
       navigator.mediaSession.metadata = new MediaMetadata({
         title: currentSong.title,
         artist: currentSong.artist,
         album: 'Web Rádio Um Novo Dia',
-        artwork: [
-          { src: LOGO_URL, sizes: '512x512', type: 'image/png' }
-        ]
+        artwork: [{ src: LOGO_URL, sizes: '512x512', type: 'image/png' }]
       });
 
-      navigator.mediaSession.setActionHandler('play', () => togglePlay());
-      navigator.mediaSession.setActionHandler('pause', () => togglePlay());
+      navigator.mediaSession.setActionHandler('play', togglePlay);
+      navigator.mediaSession.setActionHandler('pause', togglePlay);
+      navigator.mediaSession.setActionHandler('stop', () => {
+        if (audioRef.current) audioRef.current.pause();
+        setIsPlaying(false);
+      });
     }
-  }, [currentSong]);
+  }, [currentSong, isPlaying]);
 
   const togglePlay = () => {
     if (!audioRef.current) return;
@@ -62,26 +47,31 @@ const App: React.FC = () => {
       audioRef.current.pause();
       setIsPlaying(false);
     } else {
-      audioRef.current.play().then(() => {
-        setIsPlaying(true);
-      }).catch(e => {
-        console.error("Playback error:", e);
-      });
+      audioRef.current.play()
+        .then(() => setIsPlaying(true))
+        .catch(console.error);
     }
   };
 
-  if (showSplash) {
-    return <SplashScreen />;
-  }
+  if (showSplash) return <SplashScreen />;
 
   return (
-    <div className="relative min-h-screen w-full flex flex-col text-white selection:bg-amber-500 selection:text-white">
+    <div className="relative min-h-screen w-full flex flex-col text-white selection:bg-amber-500 selection:text-white overflow-hidden">
       <Background />
       
-      <div className="relative z-10 flex flex-col min-h-screen">
+      {/* Hidden but physical audio element for better OS background support */}
+      <audio 
+        ref={audioRef} 
+        src={STREAM_URL} 
+        crossOrigin="anonymous" 
+        preload="auto" 
+        className="hidden"
+      />
+
+      <div className="relative z-10 flex flex-col h-full overflow-y-auto">
         <Header onLogoClick={() => setActiveView('home')} />
 
-        <div className="sticky top-[64px] md:top-[80px] z-20 bg-purple-950/40 backdrop-blur-xl border-b border-white/5 shadow-2xl">
+        <div className="sticky top-0 z-20 bg-purple-950/40 backdrop-blur-xl border-b border-white/5 shadow-2xl">
           <div className="container mx-auto max-w-4xl">
             <Player 
               isPlaying={isPlaying} 
@@ -95,44 +85,19 @@ const App: React.FC = () => {
         <main className="flex-grow container mx-auto px-4 py-8 max-w-4xl pb-32">
           <AnimatePresence mode="wait">
             {activeView === 'contact' && (
-              <motion.div
-                key="contact"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-              >
-                <ContactSection 
-                  onOpenPrayer={() => setActiveView('prayer')} 
-                  onOpenPraise={() => setActiveView('praise')} 
-                />
+              <motion.div key="contact" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+                <ContactSection onOpenPrayer={() => setActiveView('prayer')} onOpenPraise={() => setActiveView('praise')} />
               </motion.div>
             )}
-
             {(activeView === 'prayer' || activeView === 'praise') && (
-              <motion.div
-                key="form"
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.98 }}
-              >
-                <RequestForm 
-                  type={activeView as 'prayer' | 'praise'} 
-                  onBack={() => setActiveView('contact')} 
-                />
+              <motion.div key="form" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }}>
+                <RequestForm type={activeView as 'prayer' | 'praise'} onBack={() => setActiveView('contact')} />
               </motion.div>
             )}
-
             {activeView === 'home' && (
-              <motion.div
-                key="home-empty"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-center pt-10"
-              >
+              <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center pt-10">
                 <div className="space-y-4">
-                  <p className="text-amber-400/30 text-[10px] font-black uppercase tracking-[0.4em]">
-                    Sintonize a Esperança
-                  </p>
+                  <p className="text-amber-400/30 text-[10px] font-black uppercase tracking-[0.4em]">Sintonize a Esperança</p>
                   <div className="flex justify-center gap-1">
                     {[1, 2, 3].map(i => (
                       <motion.div 
@@ -149,54 +114,33 @@ const App: React.FC = () => {
           </AnimatePresence>
         </main>
 
-        <nav className="fixed bottom-0 left-0 right-0 z-30 bg-purple-950/90 backdrop-blur-2xl border-t border-amber-500/20 p-4 pb-8 md:pb-4 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
+        <nav className="fixed bottom-0 left-0 right-0 z-30 bg-purple-950/90 backdrop-blur-2xl border-t border-amber-500/20 p-4 pb-8 md:pb-4">
           <div className="flex justify-around items-center max-w-lg mx-auto">
-            <button 
-              onClick={() => setActiveView('home')}
-              className={`flex flex-col items-center space-y-1 transition-all ${activeView === 'home' ? 'text-amber-400 scale-110' : 'text-purple-300 hover:text-amber-200'}`}
-            >
+            <button onClick={() => setActiveView('home')} className={`flex flex-col items-center space-y-1 transition-all ${activeView === 'home' ? 'text-amber-400' : 'text-purple-300'}`}>
               <Home size={22} />
-              <span className="text-[9px] font-black uppercase tracking-widest text-center">Início</span>
+              <span className="text-[9px] font-black uppercase tracking-widest">Início</span>
             </button>
-            <button 
-              onClick={() => setActiveView('contact')}
-              className={`flex flex-col items-center space-y-1 transition-all ${activeView === 'contact' ? 'text-amber-400 scale-110' : 'text-purple-300 hover:text-amber-200'}`}
-            >
+            <button onClick={() => setActiveView('contact')} className={`flex flex-col items-center space-y-1 transition-all ${activeView === 'contact' ? 'text-amber-400' : 'text-purple-300'}`}>
               <MessageCircle size={22} />
-              <span className="text-[9px] font-black uppercase tracking-widest text-center">Contato</span>
+              <span className="text-[9px] font-black uppercase tracking-widest">Contato</span>
             </button>
-            
             <div className="relative -mt-12">
                <motion.button 
                 onClick={togglePlay}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.9 }}
-                className="w-16 h-16 bg-gradient-to-tr from-amber-600 to-amber-300 rounded-2xl flex items-center justify-center shadow-[0_15px_35px_rgba(251,191,36,0.4)] text-purple-950 border-4 border-purple-950/50"
+                className="w-16 h-16 bg-gradient-to-tr from-amber-600 to-amber-300 rounded-2xl flex items-center justify-center shadow-2xl text-purple-950 border-4 border-purple-950"
               >
                 {isPlaying ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" className="ml-1" />}
               </motion.button>
-              {isPlaying && (
-                <motion.div 
-                  className="absolute -inset-2 bg-amber-500/20 rounded-3xl -z-10 blur-xl"
-                  animate={{ opacity: [0.2, 0.5, 0.2], scale: [1, 1.1, 1] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                />
-              )}
             </div>
-
-            <button 
-              onClick={() => setActiveView('prayer')}
-              className={`flex flex-col items-center space-y-1 transition-all ${activeView === 'prayer' ? 'text-amber-400 scale-110' : 'text-purple-300 hover:text-amber-200'}`}
-            >
+            <button onClick={() => setActiveView('prayer')} className={`flex flex-col items-center space-y-1 transition-all ${activeView === 'prayer' ? 'text-amber-400' : 'text-purple-300'}`}>
               <Heart size={22} />
-              <span className="text-[9px] font-black uppercase tracking-widest text-center">Oração</span>
+              <span className="text-[9px] font-black uppercase tracking-widest">Oração</span>
             </button>
-            <button 
-              onClick={() => setActiveView('praise')}
-              className={`flex flex-col items-center space-y-1 transition-all ${activeView === 'praise' ? 'text-amber-400 scale-110' : 'text-purple-300 hover:text-amber-200'}`}
-            >
+            <button onClick={() => setActiveView('praise')} className={`flex flex-col items-center space-y-1 transition-all ${activeView === 'praise' ? 'text-amber-400' : 'text-purple-300'}`}>
               <Music size={22} />
-              <span className="text-[9px] font-black uppercase tracking-widest text-center">Louvor</span>
+              <span className="text-[9px] font-black uppercase tracking-widest">Louvor</span>
             </button>
           </div>
         </nav>

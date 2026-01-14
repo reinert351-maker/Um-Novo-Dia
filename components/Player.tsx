@@ -15,6 +15,7 @@ interface PlayerProps {
   isPlaying: boolean;
   onTogglePlay: () => void;
   audioRef: React.MutableRefObject<HTMLAudioElement | null>;
+  onMetadataUpdate?: (title: string, artist: string) => void;
 }
 
 const SpectrumAnalyzer: React.FC<{ isPlaying: boolean; audioRef: React.MutableRefObject<HTMLAudioElement | null> }> = ({ isPlaying, audioRef }) => {
@@ -48,7 +49,7 @@ const SpectrumAnalyzer: React.FC<{ isPlaying: boolean; audioRef: React.MutableRe
         analyserRef.current = analyser;
         dataArrayRef.current = dataArray;
       } catch (err) {
-        console.warn("Real-time analysis blocked (CORS). Using advanced simulation.");
+        // Advanced simulation fallback
       }
     };
 
@@ -84,9 +85,8 @@ const SpectrumAnalyzer: React.FC<{ isPlaying: boolean; audioRef: React.MutableRe
             barHeight = (dataArrayRef.current[binIndex] / 255) * height;
           } else {
             const time = Date.now() / 150;
-            const noise = Math.sin(time + i * 0.2) * 15 + Math.sin(time * 0.5 + i * 0.1) * 10;
-            const base = 10 + Math.random() * 5;
-            barHeight = Math.max(5, (base + noise + Math.abs(Math.sin(i * 0.05) * 40)) % height);
+            const noise = Math.sin(time + i * 0.2) * 15;
+            barHeight = Math.max(5, (10 + noise + Math.abs(Math.sin(i * 0.05) * 40)) % height);
           }
         } else {
           barHeight = 2;
@@ -107,12 +107,6 @@ const SpectrumAnalyzer: React.FC<{ isPlaying: boolean; audioRef: React.MutableRe
 
           const yPos = height - (s + 1) * segHeight;
           ctx.fillStyle = color;
-          if (isSelected) {
-            ctx.shadowBlur = 4;
-            ctx.shadowColor = color;
-          } else {
-            ctx.shadowBlur = 0;
-          }
           ctx.fillRect(x + 1, yPos + 1, barWidth - 2, segHeight - 2);
         }
         x += barWidth;
@@ -125,14 +119,13 @@ const SpectrumAnalyzer: React.FC<{ isPlaying: boolean; audioRef: React.MutableRe
   }, [isPlaying]);
 
   return (
-    <div className="w-full bg-black/60 p-3 rounded-2xl border border-white/5 shadow-2xl relative overflow-hidden group">
-      <div className="absolute inset-0 bg-gradient-to-t from-purple-500/5 to-transparent pointer-events-none" />
+    <div className="w-full bg-black/60 p-3 rounded-2xl border border-white/5 shadow-2xl relative overflow-hidden">
       <canvas ref={canvasRef} width={600} height={100} className="w-full h-16 md:h-24 block" />
     </div>
   );
 };
 
-const Player: React.FC<PlayerProps> = ({ isPlaying, onTogglePlay, audioRef }) => {
+const Player: React.FC<PlayerProps> = ({ isPlaying, onTogglePlay, audioRef, onMetadataUpdate }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [currentSong, setCurrentSong] = useState({ 
     title: "Sintonizando...", 
@@ -150,68 +143,42 @@ const Player: React.FC<PlayerProps> = ({ isPlaying, onTogglePlay, audioRef }) =>
     return () => clearInterval(timer);
   }, []);
 
-  const parseMetadataString = (str: string) => {
-    if (!str || str.length < 3) return null;
-    const clean = str.trim();
-    if (clean.includes(" - ")) {
-      const parts = clean.split(" - ");
-      return { artist: parts[0].trim(), title: parts.slice(1).join(" - ").trim() };
-    }
-    const lower = clean.toLowerCase();
-    if (lower.includes("zeno.fm") || lower.includes("http") || lower.includes("stream")) return null;
-    return { artist: "Web Rádio Um Novo Dia", title: clean };
-  };
-
-  const extractSongData = (data: any) => {
-    if (!data) return null;
-    const np = data.now_playing || data;
-    const listeners = data.listeners || data.play_count || np.listeners;
-    if (np.title && np.artist && !np.title.includes("Zeno.FM")) {
-      return { title: np.title, artist: np.artist, listeners };
-    }
-    const rawText = np.text || np.stream_title || data.stream_title || data.title;
-    if (rawText) {
-      const parsed = parseMetadataString(rawText);
-      if (parsed) return { ...parsed, listeners };
-    }
-    return null;
-  };
-
   const fetchMetadata = async () => {
     const radioId = "3b9u03vcqs8uv";
-    const endpoints = [`https://api.zeno.fm/public/v2/display/${radioId}`];
     setIsLoadingMetadata(true);
     
-    for (const baseUrl of endpoints) {
-      try {
-        const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(baseUrl)}&t=${Date.now()}`);
-        if (!response.ok) continue;
-        const json = await response.json();
-        const data = JSON.parse(json.contents);
-        const songInfo = extractSongData(data);
+    try {
+      const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(`https://api.zeno.fm/public/v2/display/${radioId}`)}&t=${Date.now()}`);
+      if (!response.ok) throw new Error();
+      const json = await response.json();
+      const data = JSON.parse(json.contents);
+      
+      const np = data.now_playing || data;
+      const title = np.title || "Web Rádio Um Novo Dia";
+      const artist = np.artist || "Levando esperança e fé";
+      const listeners = data.listeners || np.listeners;
 
-        if (songInfo && songInfo.title !== "Sintonizando...") {
-          if (songInfo.title !== lastSongRef.current.title) {
-            if (lastSongRef.current.title && lastSongRef.current.title !== "Sintonizando...") {
-              const historyItem: Song = {
-                id: Date.now().toString(),
-                title: lastSongRef.current.title,
-                artist: lastSongRef.current.artist,
-                playedAt: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-              };
-              setRecentSongs(prev => [historyItem, ...prev].slice(0, 5));
-            }
-            lastSongRef.current = { title: songInfo.title, artist: songInfo.artist };
-            setCurrentSong({ title: songInfo.title, artist: songInfo.artist, listeners: songInfo.listeners });
-          } else {
-            setCurrentSong(prev => ({ ...prev, listeners: songInfo.listeners }));
-          }
-          setIsLoadingMetadata(false);
-          return;
+      if (title !== lastSongRef.current.title) {
+        if (lastSongRef.current.title && lastSongRef.current.title !== "Sintonizando...") {
+          const historyItem: Song = {
+            id: Date.now().toString(),
+            title: lastSongRef.current.title,
+            artist: lastSongRef.current.artist,
+            playedAt: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+          };
+          setRecentSongs(prev => [historyItem, ...prev].slice(0, 5));
         }
-      } catch (e) {}
+        lastSongRef.current = { title, artist };
+        setCurrentSong({ title, artist, listeners });
+        if (onMetadataUpdate) onMetadataUpdate(title, artist);
+      } else {
+        setCurrentSong(prev => ({ ...prev, listeners }));
+      }
+    } catch (e) {
+      console.warn("Metadata fetch error");
+    } finally {
+      setIsLoadingMetadata(false);
     }
-    setIsLoadingMetadata(false);
   };
 
   useEffect(() => {
@@ -248,7 +215,6 @@ const Player: React.FC<PlayerProps> = ({ isPlaying, onTogglePlay, audioRef }) =>
         )}
       </AnimatePresence>
 
-      {/* Date and Time Bar */}
       <div className="w-full flex items-center justify-center gap-4 py-1 border-b border-white/5 mb-2">
         <div className="flex items-center gap-2 text-amber-500/60 font-black text-[9px] md:text-[10px] tracking-[0.3em] uppercase font-inter">
           <Clock size={10} />
@@ -259,19 +225,16 @@ const Player: React.FC<PlayerProps> = ({ isPlaying, onTogglePlay, audioRef }) =>
       </div>
 
       <div className="w-full grid grid-cols-1 md:grid-cols-[1.2fr_1.5fr_auto] items-center gap-4 md:gap-6">
-        
-        {/* Modern 65-Band Visualizer Section */}
         <div className="w-full">
           <SpectrumAnalyzer isPlaying={isPlaying} audioRef={audioRef} />
         </div>
 
-        {/* Info Section */}
         <div className="flex-grow text-center md:text-left space-y-1 min-w-0">
           <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 mb-1">
             <div className="flex items-center justify-center md:justify-start gap-2">
-              <span className={`w-2 h-2 rounded-full ${isPlaying ? 'bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]' : 'bg-white/10'}`} />
+              <span className={`w-2 h-2 rounded-full ${isPlaying ? 'bg-red-500 animate-pulse' : 'bg-white/10'}`} />
               <span className="text-[10px] font-black uppercase tracking-widest text-white/40">
-                {isPlaying ? "ON AIR • DIGITAL HD" : "STANDBY"}
+                {isPlaying ? "AO VIVO • DIGITAL HD" : "PAUSADO"}
               </span>
             </div>
             {currentSong.listeners !== undefined && (
@@ -279,34 +242,19 @@ const Player: React.FC<PlayerProps> = ({ isPlaying, onTogglePlay, audioRef }) =>
                 <Users size={10} /> {currentSong.listeners} OUVINTES
               </span>
             )}
-            {isLoadingMetadata && <RefreshCw size={10} className="animate-spin text-amber-500/50 self-center" />}
           </div>
 
           <div className="flex items-center justify-center md:justify-start gap-4">
             <div className="min-w-0 flex-grow">
-              <AnimatePresence mode="wait">
-                <motion.h3 
-                  key={currentSong.title}
-                  initial={{ opacity: 0, y: 5 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="text-white text-lg md:text-2xl font-black italic tracking-tighter truncate drop-shadow-lg leading-tight uppercase"
-                >
-                  {currentSong.title}
-                </motion.h3>
-              </AnimatePresence>
-              <AnimatePresence mode="wait">
-                <motion.p 
-                  key={currentSong.artist}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="text-amber-500 text-[10px] md:text-xs font-bold uppercase tracking-[0.2em] truncate opacity-80"
-                >
-                  {currentSong.artist}
-                </motion.p>
-              </AnimatePresence>
+              <h3 className="text-white text-lg md:text-2xl font-black italic tracking-tighter truncate leading-tight uppercase">
+                {currentSong.title}
+              </h3>
+              <p className="text-amber-500 text-[10px] md:text-xs font-bold uppercase tracking-[0.2em] truncate opacity-80">
+                {currentSong.artist}
+              </p>
             </div>
             <button
-              onClick={(e) => { e.stopPropagation(); handleShare(); }}
+              onClick={handleShare}
               className="p-2 md:p-3 bg-white/5 hover:bg-amber-500 hover:text-purple-950 rounded-xl transition-all border border-white/10 active:scale-90 flex-shrink-0"
             >
               <Share2 size={16} />
@@ -314,10 +262,9 @@ const Player: React.FC<PlayerProps> = ({ isPlaying, onTogglePlay, audioRef }) =>
           </div>
         </div>
 
-        {/* Desktop History Mini-Panel */}
         <div className="hidden md:flex flex-col items-end gap-2 border-l border-white/5 pl-8">
            <div className="flex items-center gap-2 text-white/20 uppercase font-black text-[8px] tracking-[0.3em]">
-              <History size={10} /> RECENTS
+              <History size={10} /> RECENTES
            </div>
            <div className="space-y-1 max-w-[120px]">
              {recentSongs.slice(0, 2).map(song => (

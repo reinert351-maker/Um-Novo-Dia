@@ -1,5 +1,5 @@
 
-export const LOGO_URL = "https://drive.google.com/uc?export=view&id=1Vu5TxnT60RxvYXvIBTSnv7YK_n2lvs5j";
+export const LOGO_URL = "https://lh3.googleusercontent.com/d/1Vu5TxnT60RxvYXvIBTSnv7YK_n2lvs5j";
 export const STREAM_URL = "https://stream.zeno.fm/3b9u03vcqs8uv";
 export const WHATSAPP_NUMBER = "5547999458205";
 export const INSTAGRAM_URL = "https://www.instagram.com/umnovodiaweb";

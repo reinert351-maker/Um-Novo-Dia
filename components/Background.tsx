@@ -7,11 +7,13 @@ const Background: React.FC = () => {
     <div className="fixed inset-0 z-0 overflow-hidden bg-gradient-to-br from-purple-950 via-[#1e1b4b] to-indigo-950">
       {/* Blurred background logo */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.05] pointer-events-none">
-        <img 
-          src={LOGO_URL} 
-          alt="" 
-          className="w-[150vw] max-w-none grayscale blur-xl"
-        />
+        <div className="w-[120vw] h-[120vw] rounded-full overflow-hidden grayscale blur-3xl">
+          <img 
+            src={LOGO_URL} 
+            alt="" 
+            className="w-full h-full object-cover"
+          />
+        </div>
       </div>
 
       {/* Subtle light flares */}

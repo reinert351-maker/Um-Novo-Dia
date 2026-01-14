@@ -23,8 +23,8 @@ const SplashScreen: React.FC = () => {
       {particles.map((p) => (
         <motion.div
           key={p.id}
-          className="particle"
-          style={{ top: p.top, left: p.left, width: p.size, height: p.size }}
+          className="particle absolute"
+          style={{ top: p.top, left: p.left, width: p.size, height: p.size, backgroundColor: '#fbbf24', borderRadius: '50%' }}
           animate={{
             y: [0, -40, 0],
             opacity: [0.1, 0.4, 0.1],
@@ -45,11 +45,13 @@ const SplashScreen: React.FC = () => {
         transition={{ duration: 1.5, ease: "easeOut" }}
         className="relative mb-8 px-10"
       >
-        <img 
-          src={LOGO_URL} 
-          alt="Web Rádio Um Novo Dia" 
-          className="w-64 md:w-80 object-contain logo-glow"
-        />
+        <div className="w-48 h-48 md:w-64 md:h-64 rounded-full overflow-hidden border-4 border-amber-500 shadow-[0_0_50px_rgba(251,191,36,0.3)] bg-white/5">
+          <img 
+            src={LOGO_URL} 
+            alt="Web Rádio Um Novo Dia" 
+            className="w-full h-full object-cover"
+          />
+        </div>
       </motion.div>
 
       <motion.p

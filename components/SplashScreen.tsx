@@ -45,11 +45,11 @@ const SplashScreen: React.FC = () => {
         transition={{ duration: 1.5, ease: "easeOut" }}
         className="relative mb-8 px-10"
       >
-        <div className="w-48 h-48 md:w-64 md:h-64 rounded-full overflow-hidden border-4 border-amber-500 shadow-[0_0_50px_rgba(251,191,36,0.3)] bg-white/5">
+        <div className="w-48 h-48 md:w-64 md:h-64 rounded-full overflow-hidden border-4 border-amber-500 shadow-[0_0_60px_rgba(251,191,36,0.4)] bg-transparent">
           <img 
             src={LOGO_URL} 
             alt="Web Rádio Um Novo Dia" 
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover rounded-full scale-110"
           />
         </div>
       </motion.div>

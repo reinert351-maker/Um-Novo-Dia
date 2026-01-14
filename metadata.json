@@ -1,5 +1,7 @@
 {
   "name": "Web Rádio Um Novo Dia",
   "description": "Aplicativo de web rádio cristã com transmissão ao vivo, pedidos de oração e louvor, e integração total com WhatsApp e Instagram.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "microphone"
+  ]
 }

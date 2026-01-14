@@ -17,12 +17,12 @@ const Header: React.FC<HeaderProps> = ({ onLogoClick }) => {
           className="transition-transform hover:scale-105 active:scale-95 px-4"
         >
           {!imageError ? (
-            <div className="h-12 w-12 md:h-16 md:w-16 rounded-full overflow-hidden border-2 border-amber-500/30 shadow-lg logo-glow bg-white/10">
+            <div className="h-14 w-14 md:h-16 md:w-16 rounded-full overflow-hidden border-2 border-amber-500/40 shadow-[0_0_15px_rgba(251,191,36,0.2)] logo-glow bg-transparent">
               <img 
                 src={LOGO_URL} 
                 alt="Web Rádio Logo" 
                 onError={() => setImageError(true)}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover rounded-full scale-110"
               />
             </div>
           ) : (
